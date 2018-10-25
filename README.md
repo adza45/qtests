@@ -7,7 +7,7 @@ Simple project to test a deep q neural network quickly.
 Untrained network<br/>
 ![Untrained](https://github.com/adza45/qtests/blob/master/media/Untrained.gif)
 
-Trained network (after approximately 13000000 game loop)<br/>
+Trained network (after approximately 13000000 game loops)<br/>
 ![Trained](https://github.com/adza45/qtests/blob/master/media/Trained.gif)
 
 ## How to run
