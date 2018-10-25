@@ -1,6 +1,6 @@
 # Deep Q Learning Example
 
-Simple Deep Q project to test a deep q neural network quickly.
+Simple project to test a deep q neural network quickly.
 
 ## Results
 
