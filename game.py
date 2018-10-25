@@ -16,8 +16,6 @@ import json
 
 '''Game Parameters'''
 MAP_SIZE = (65, 65)
-game_step = 0
-run = True
 
 ##########################################################################
 
@@ -95,10 +93,13 @@ def update(units, total_score):
 
 	return total_score
 
-def main(options):
+units = init()
+agent = Agent()
 
-	units = init()
-	agent = Agent()
+def main(options, units, agent):
+	game_step = 0
+
+	run = True
 
 	image = draw(units, options)
 	agent.x_t = image
@@ -106,24 +107,26 @@ def main(options):
 	agent.r_t = 0
 	agent.s_t = np.stack((agent.x_t, agent.x_t, agent.x_t, agent.x_t), axis=2)
 
-	if options.new == "False":
+	if options.load == "True":
 		if agent.checkpoint and agent.checkpoint.model_checkpoint_path:
-		    agent.saver.restore(agent.sess, agent.checkpoint.model_checkpoint_path)
-		    print("Successfully loaded:", agent.checkpoint.model_checkpoint_path)
+			agent.saver.restore(agent.sess, agent.checkpoint.model_checkpoint_path)
+			print("Successfully loaded:", agent.checkpoint.model_checkpoint_path)
 		else:
-		    print("Could not find old network weights")
+			print("Could not find old network weights")
+
+		with open('saved_networks/D.pkl', 'rb') as input:
+			agent.D = pickle.load(input)
+
+		with open('saved_networks/tracker.json') as f:
+			tracker = json.load(f)
+
+			agent.t = tracker["t"]
+			agent.epsilon = tracker["epsilon"]
+
+			agent.EXPLORE = tracker["explore"] - (tracker["t"] - agent.OBSERVE)
+
 	else:
 		print("starting new training session. This will overwright saved weights.")
-
-	with open('saved_networks/D.pkl', 'rb') as input:
-    	agent.D = pickle.load(input)
-
-	with open('saved_networks/tracker.json') as f:
-	    tracker = json.load(f)
-
-		agent.t = tracker.t
-		agent.epsilon = tracker.epsilon
-		agent.EXPLORE = tracker.explore
 
 	'''Main Game Loop'''
 	total_score = 0
@@ -178,21 +181,20 @@ def main(options):
 
 		agent.s_t = agent.s_t1
 		agent.t = agent.t + 1
-		agent.total_reward += agent.r_t
 
 		if agent.t % 10000 == 0:
 			agent.saver.save(agent.sess, 'saved_networks/' + agent.GAME + '-dqn', global_step = agent.t)
 
 			with open('saved_networks/D.pkl', 'wb') as output:
-			    pickle.dump(agent.D, output, pickle.HIGHEST_PROTOCOL)
+				pickle.dump(agent.D, output, pickle.HIGHEST_PROTOCOL)
 
 			with open('saved_networks/tracker.json', 'w') as outfile:
 				save_network = {
 					"t": agent.t,
-					"eplison": agent.epsilon,
+					"epsilon": agent.epsilon,
 					"explore": agent.EXPLORE
 					}
-			    json.dump(save_network, outfile)
+				json.dump(save_network, outfile)
 
 		state = ""
 		if agent.t <= agent.OBSERVE:
@@ -201,7 +203,7 @@ def main(options):
 			state = "explore"
 		else:
 			state = "train"
-		print("TIMESTEP", agent.t, "TOTAL REWARD", agent.total_reward, "/ STATE", state, \
+		print("TIMESTEP", agent.t, "/ STATE", state, \
 			"/ EPSILON", agent.epsilon, "/ ACTION", agent.action_index, "/ REWARD", agent.r_t, \
 			"/ Q_MAX %e" % np.max(agent.readout_t), "/ SCORE", total_score)
 
@@ -225,36 +227,36 @@ def main(options):
 		# move(choice, units[0])
 
 		if agent.a_t[0] == 1:
-		    move("d", units[0])
+			move("d", units[0])
 		elif agent.a_t[1] == 1:
-		    move("s", units[0])
+			move("s", units[0])
 		elif agent.a_t[2] == 1:
-		    move("a", units[0])
+			move("a", units[0])
 		elif agent.a_t[3] == 1:
-		    move("w", units[0])
+			move("w", units[0])
 		elif agent.a_t[4] == 1:
 			pass
 
 		game_step = game_step + 1
 
 def validate_options(options):
-	if options.new != "True" or options.new != "False":
-		print("Arguement 'new' must be 'True' or 'False'")
+	if options.load != "True" and options.load != "False":
+		print("Arguement 'load' must be 'True' or 'False'")
 		sys.exit(0)
 
-	if options.display != "True" or options.display != "False":
+	if options.display != "True" and options.display != "False":
 		print("Arguement 'display' must be 'True' or 'False'")
 		sys.exit(0)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 
 	parser = optparse.OptionParser()
 
-	parser.add_option('-n', '--new', action="store", dest="new", help="Load previous weights (True/False)", default="True")
+	parser.add_option('-l', '--load', action="store", dest="load", help="Load previous weights (True/False)", default="True")
 	parser.add_option('-d', '--display', action="store", dest="display", help="Display game screen", default="True")
 
 	options, args = parser.parse_args()
 
 	validate_options(options)
 
-    main(options)
+	main(options, units, agent)
